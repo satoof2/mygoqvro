@@ -37,7 +37,7 @@ type phybbitJSON struct{
 	PID string `json:"external_media_id"`
 	MID string `json:"external_site_id"`
 	ZID string `json:"external_sub_site_id"`
-	CID string `json:"campaing_id"`
+	CID string `json:"campaign_id"`
 	IP string `json:"ip_long"`
 	UID string `json:"uid"`
 	IDFA string `json:"device_id"`
@@ -66,12 +66,15 @@ func (r rowJSON)newPhybbitJSON() phybbitJSON{
 	}
 }
 
-func (r phybbitJSON)bytes() ([]byte,error){
+func (r phybbitJSON)bytes() ([]byte,bool,error){
+	if r.ZID == "1306008" {
+		return nil,false,nil
+	}
 	b, err := json.Marshal(r)
 	if err != nil {
-		return nil, err
+		return nil, true,err
 	}
-	return b, nil
+	return b, true,nil
 }
 
 func main(){
@@ -87,7 +90,7 @@ func main(){
     {"name":"external_media_id",    "type": "string"},
     {"name":"external_site_id",     "type": "string"},
     {"name":"external_sub_site_id", "type": "string"},
-    {"name":"campaign_id",          "type": ["null", "string"], "default": null},
+    {"name":"campaign_id",          "type": "string"},
     {"name":"conversion_type",      "type": ["null", "string"], "default": null},
     {"name":"attribution_time",     "type": ["null", "string"], "default": null},
     {"name":"impression_time",      "type": ["null", "string"], "default": null},
@@ -111,11 +114,15 @@ func main(){
 	for stdin.Scan(){
 		line := stdin.Text()
 		tsv:=strings.Split(line,"\t")
-		jsonByte,err:=newRowJSON(tsv[0], tsv[2]).newPhybbitJSON().bytes()
+		jsonByte,valid,err:=newRowJSON(tsv[0], tsv[2]).newPhybbitJSON().bytes()
+		if !valid {
+			continue
+		}
 		if err != nil{
 			fmt.Println(err)
 			continue
 		}
+
 		native,_,err := codec.NativeFromTextual(jsonByte)
 		if err != nil {
 			fmt.Println(err)
