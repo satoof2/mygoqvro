@@ -1,99 +1,100 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"bufio"
-	"strings"
 	"encoding/json"
+	"fmt"
 	"gopkg.in/linkedin/goavro.v2"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 )
 
-type rowJSON struct{
-	ts string
-	VID string `json:"vid"`
-	PID string `json:"pid"`
-	MID string `json:"mid"`
-	ZID string `json:"zid"`
-	IP string `json:"ip"`
-	UID string `json:"gid"`
+type rowJSON struct {
+	ts   time.Time
+	VID  string `json:"vid"`
+	PID  string `json:"pid"`
+	MID  string `json:"mid"`
+	ZID  string `json:"zid"`
+	IP   string `json:"ip"`
+	UID  string `json:"gid"`
 	IDFA string `json:"idfa"`
-	UA string `  json:"ua"`
-	REF string  `json:"ref"`
+	UA   string `json:"ua"`
+	REF  string `json:"ref"`
 	Lang string `json:"lang"`
-	IID string   `json:"iid"`
+	IID  string `json:"iid"`
+	ATS  string `json:"ats"`
 }
 
-func newRowJSON(time,str string) rowJSON{
+func newRowJSON(timeStr, str string) rowJSON {
 	ret := rowJSON{}
-	json.Unmarshal([]byte(str),&ret)
-	ret.ts=time
+	err := json.Unmarshal([]byte(str), &ret)
+	if err != nil {
+		fmt.Println(err)
+	}
+	ut, _ := strconv.ParseInt(timeStr, 10, 64)
+	ret.ts = time.Unix(ut, 64)
 	return ret
 }
 
-type phybbitJSON struct{
-	Time string `json:"time"`
-	VID string `json:"external_publisher_id"`
-	PID string `json:"external_media_id"`
-	MID string `json:"external_site_id"`
-	ZID string `json:"external_sub_site_id"`
-	CID string `json:"campaign_id"`
-	IP string `json:"ip_long"`
-	UID string `json:"uid"`
-	IDFA string `json:"device_id"`
-	UA string `  json:"user_agent"`
-	REF string  `json:"referer"`
-	Lang string `json:"language"`
-	IID string   `json:"session_id"`
-
+func (r rowJSON) mapString() map[string]interface{} {
+	ret := map[string]interface{}{
+		"time":                  r.ts,
+		"external_publisher_id": r.VID,
+		"external_media_id":     r.PID,
+		"external_site_id":      r.MID,
+		"external_sub_site_id":  r.ZID,
+		"campaign_id":           "-",
+		"session_id":            map[string]interface{}{"string": r.IID},
+	}
+	if r.IP != "" {
+		ret["ip_long"] = map[string]interface{}{"string": r.IP}
+	}
+	if r.UID != "" {
+		ret["uid"] = map[string]interface{}{"string": r.UID}
+	}
+	if r.IDFA != "" {
+		ret["device_id"] = map[string]interface{}{"string": r.IDFA}
+	}
+	if r.UA != "" {
+		ret["user_agent"] = map[string]interface{}{"string": r.UA}
+	}
+	if r.Lang != "" {
+		ret["language"] = map[string]interface{}{"string": r.Lang}
+	}
+	if r.ATS != "" {
+		ut, err := strconv.ParseInt(r.ATS, 10, 64)
+		if err == nil {
+			ret["impression_time"] = map[string]interface{}{"long.timestamp-millis": time.Unix(ut, 0)}
+		}
+	}
+	return ret
 }
 
-func (r rowJSON)newPhybbitJSON() phybbitJSON{
-	return phybbitJSON{
-		Time: r.ts, 
-		VID :r.VID,
-		PID :r.PID,
-		MID :r.MID,
-		ZID :r.ZID,
-		CID : "-",
-		IP:r.IP,
-		UID: r.UID,
-		IDFA:r.IDFA,
-		UA :r.UA,
-		REF :r.REF,
-		Lang:r.Lang,
-		IID :r.IID,
-	}
+func (r rowJSON) jsonByte() []byte {
+	s, _ := json.Marshal(r.mapString())
+	return s
 }
 
-func (r phybbitJSON)bytes() ([]byte,bool,error){
-	if r.ZID == "1306008" {
-		return nil,false,nil
-	}
-	b, err := json.Marshal(r)
-	if err != nil {
-		return nil, true,err
-	}
-	return b, true,nil
-}
-
-func main(){
-	codec, err := goavro.NewCodec(
-		`
+func encoder() {
+	conf := goavro.OCFConfig{
+		W: os.Stdout,
+		Schema: `
             {
     "type": "record",
-
+    "namespace":"geniee.co.jp",
     "name":"ssp",
     "fields":[
-    {"name":"time",                 "type": "string"},
+    {"name":"time",                 "type": {"type": "long", "logicalType": "timestamp-millis"}},
     {"name":"external_publisher_id","type": "string"},
     {"name":"external_media_id",    "type": "string"},
     {"name":"external_site_id",     "type": "string"},
     {"name":"external_sub_site_id", "type": "string"},
     {"name":"campaign_id",          "type": "string"},
     {"name":"conversion_type",      "type": ["null", "string"], "default": null},
-    {"name":"attribution_time",     "type": ["null", "string"], "default": null},
-    {"name":"impression_time",      "type": ["null", "string"], "default": null},
+    {"name":"attribution_time",     "type": ["null", {"type": "long", "logicalType": "timestamp-millis"}], "default": null},
+    {"name":"impression_time",      "type": ["null", {"type": "long", "logicalType": "timestamp-millis"}], "default": null},
     {"name":"ip_long",              "type": ["null", "string"], "default": null},
     {"name":"uid",                  "type": ["null", "string"], "default": null},
     {"name":"device_id",            "type": ["null", "string"], "default": null},
@@ -106,33 +107,40 @@ func main(){
     {"name":"wifi",                 "type": ["null", "string"], "default": null},
     {"name":"session_id",           "type": ["null", "string"], "default": null}
 ]
-            }`)
+            }`,
+	}
+	writer, err := goavro.NewOCFWriter(conf)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	stdin := bufio.NewScanner(os.Stdin)
+	for stdin.Scan() {
+		tsv := strings.Split(stdin.Text(), "\t")
+		jsonMaps := []map[string]interface{}{newRowJSON(tsv[0], tsv[2]).mapString()}
+		err = writer.Append(jsonMaps)
+		if err != nil {
+			fmt.Println(err)
+			fmt.Printf("\n")
+			continue
+		}
+	}
+}
+
+func decoder() {
+	reader, err := goavro.NewOCFReader(os.Stdin)
 	if err != nil {
 		fmt.Println(err)
 	}
-	stdin := bufio.NewScanner(os.Stdin)
-	for stdin.Scan(){
-		line := stdin.Text()
-		tsv:=strings.Split(line,"\t")
-		jsonByte,valid,err:=newRowJSON(tsv[0], tsv[2]).newPhybbitJSON().bytes()
-		if !valid {
-			continue
-		}
-		if err != nil{
-			fmt.Println(err)
-			continue
-		}
-
-		native,_,err := codec.NativeFromTextual(jsonByte)
+	for reader.Scan() {
+		hoge, err := reader.Read()
 		if err != nil {
 			fmt.Println(err)
-			continue
 		}
-		binary, err := codec.BinaryFromNative(nil, native)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		fmt.Println(binary)
+		fmt.Println(hoge)
 	}
+}
+func main() {
+	//decoder()
+	encoder()
 }
