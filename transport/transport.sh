@@ -1,7 +1,8 @@
 #!/bin/bash
 
 PHYBBIT_PROJECT=mojaco-1208
-dates=2019030{5..14}
+# 2019/03/05~07は一時保存しよう
+dates=2019030{5..7}
 
 function GCSCertification(){
     local readonly keyFile=spideraf-exchange-geniee.json
@@ -29,18 +30,32 @@ function getLogType(){
 }
 
 # inpupt $1:date $2:category $3:logtype
-# date is YYYYmmdd
-# category is imps or clicks
+# $1:date is YYYYmmdd
+# $2:category is imps or clicks
 function upload(){
     local bucket=spideraf-exchange-geniee
 
     local date=$1
-    # clicks or imps
+    local category=$2
+    
+    local logtype=$(getLogType $category)
+    for hour in $(seq -f %02g 00 23)
+    do
+	echo "upload ${date}${hour}"
+	hadoop2binary $date "$hour" $logtype | gsutil cp - gs://${bucket}/${category}/${date}_$hour.avro
+    done
+}
+
+function _save(){
+    local bucket=spideraf-exchange-geniee
+
+    local date=$1
     local category=$2
     local logtype=$(getLogType $category)
-    for hour in `seq -w 00 23`
+    echo $date
+    for hour in $(seq -f %02g 00 23)
     do
-	hadoop2binary $date $hour $logtype | gsutil cp - gs://${bucket}/${category}_$date_$hour.avro
+	ssh ops2 "/home/ops-cdh/hadoop.sh $date $hour $logtype"
     done
 }
 
@@ -49,22 +64,31 @@ function main(){
     scp_hadoop
     for date in dates
     do
+	echo "upload imps"
+	upload $date imps
+	echo "upload clicks"
 	upload $date clicks
-	#upload $date imps
     done
 }
 
 function test(){
-    tmpdir=tmp
-    tmpFile=${tmpdir}/test.log
-    mkdir -p $tmpdir
-    
+    GCSCertification
     scp_hadoop
-    date=20190307
-    hour="00"
-    logtype="click"
-    hadoop2binary $date "${hour}" $logtype > $tmpFile
+    #upload
 }
 
-#main
-test
+function save(){
+    scp_hadoop
+    ssh ops2 "hadoop fs -rm -r /user/ops-cdh/K-Honkawa"
+    for date in 2019030{5..7}
+    do
+	echo $date
+	echo "save imps"
+	_save $date imps
+	echo "save clicks"
+	_save $date clicks
+    done
+
+}
+save
+#test

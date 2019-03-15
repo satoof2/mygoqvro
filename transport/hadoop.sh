@@ -13,11 +13,11 @@ function main(){
     local TEMPORARY_DIR=/user/ops-cdh
     local SRC=/data/aladdin/logs_compressed/${LOG_TYPE}/$DATE/$HOUR/part-*.lzo
     local DST_NAME=K-Honkawa
-    local DST=$TEMPORARY_DIR/${DST_NAME}/$DATE/$HOUR
+    local DST=$TEMPORARY_DIR/${DST_NAME}/${LOGTYPE}/$DATE/$HOUR
     local MAP=mapper.py
 
     #-----HDFS上の出力ディレクトリ削除-----
-    hadoop fs -rm -r "$DST"
+    #hadoop fs -rm -r "$DST"
     
     #wait_by_num_jobs
     #-----Hadoop実行-----
@@ -28,9 +28,7 @@ function main(){
            -input "$SRC" \
            -output "$DST" \
            -mapper "$MAP" >> ${hadoop_log}
-    hadoop fs -cat "$DST"/part-*
-    
-    hadoop fs -rm -r $TEMPORARY_DIR/${DST_ZONES}/
+    #hadoop fs -cat "$DST"/part-*
 }
 
 main

@@ -154,6 +154,6 @@ func decoder() {
 	}
 }
 func main() {
-	//decoder()
-	encoder()
+	decoder()
+	//encoder()
 }
