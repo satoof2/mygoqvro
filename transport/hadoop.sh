@@ -12,9 +12,9 @@ fi
 function main(){
     local TEMPORARY_DIR=/user/ops-cdh
     local SRC=/data/aladdin/logs_compressed/${LOG_TYPE}/$DATE/$HOUR/part-*.lzo
-    local DST_NAME=kojiro-honkawa
-    #local DST_NAME=K-Honkawa 一時保存よう
-    local DST=$TEMPORARY_DIR/${DST_NAME}/${LOGTYPE}/$DATE/$HOUR
+    #local DST_NAME=kojiro-honkawa一時保存よう
+    local DST_NAME=K-Honkawa 
+    local DST=$TEMPORARY_DIR/${DST_NAME}/${LOG_TYPE}/$DATE/$HOUR
     local MAP=mapper.py
 
     #-----HDFS上の出力ディレクトリ削除-----

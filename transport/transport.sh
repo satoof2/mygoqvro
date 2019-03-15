@@ -79,8 +79,8 @@ function test(){
 
 function save(){
     scp_hadoop
-    #ssh ops2 "hadoop fs -rm -r /user/ops-cdh/K-Honkawa"
-    for date in 2019030{5..7}
+    ssh ops2 "hadoop fs -rm -r /user/ops-cdh/K-Honkawa"
+    for date in 2019030{5..8}
     do
 	echo $date
 	echo "save imps"
