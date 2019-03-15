@@ -31,11 +31,19 @@ func newRowJSON(timeStr, str string) rowJSON {
 	ret := rowJSON{}
 	err := json.Unmarshal([]byte(str), &ret)
 	if err != nil {
-		fmt.Println(err)
+		//fmt.Println(err)
+		return ret
 	}
 	ut, _ := strconv.ParseInt(timeStr, 10, 64)
 	ret.ts = time.Unix(ut, 64)
 	return ret
+}
+
+func (r rowJSON) valid() bool{
+	return r.VID != "" &&
+		r.PID != "" &&
+		r.MID != "" &&
+		r.ZID != ""
 }
 
 func (r rowJSON) mapString() map[string]interface{} {
@@ -47,6 +55,9 @@ func (r rowJSON) mapString() map[string]interface{} {
 		"external_sub_site_id":  r.ZID,
 		"campaign_id":           "-",
 		"session_id":            map[string]interface{}{"string": r.IID},
+	}
+	if !r.valid() {
+		ret["failed"]=map[string]interface{}{}
 	}
 	if r.IP != "" {
 		ret["ip_long"] = map[string]interface{}{"string": r.IP}
@@ -118,10 +129,12 @@ func encoder() {
 	for stdin.Scan() {
 		tsv := strings.Split(stdin.Text(), "\t")
 		jsonMaps := []map[string]interface{}{newRowJSON(tsv[0], tsv[2]).mapString()}
+		if _,exist :=jsonMaps[0]["failed"]; exist{
+			fmt.Println("failed")
+			continue
+		}
 		err = writer.Append(jsonMaps)
 		if err != nil {
-			fmt.Println(err)
-			fmt.Printf("\n")
 			continue
 		}
 	}

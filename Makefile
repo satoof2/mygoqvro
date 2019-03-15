@@ -8,3 +8,6 @@ GOFMT=goimports
 
 build-linux:
 	GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(NAME) -ldflags "$(LDFLAGS)" cmd/main.go
+
+build:
+	$(GOBUILD) -o $(NAME) -ldflags "$(LDFLAGS)" cmd/main.go
