@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+var mode="encoder"
+
 type rowJSON struct {
 	ts   time.Time
 	VID  string `json:"vid"`
@@ -128,9 +130,12 @@ func encoder() {
 	stdin := bufio.NewScanner(os.Stdin)
 	for stdin.Scan() {
 		tsv := strings.Split(stdin.Text(), "\t")
+		if len(tsv) != 3 {
+			continue
+		}
 		jsonMaps := []map[string]interface{}{newRowJSON(tsv[0], tsv[2]).mapString()}
 		if _,exist :=jsonMaps[0]["failed"]; exist{
-			fmt.Println("failed")
+			//fmt.Println("failed")
 			continue
 		}
 		err = writer.Append(jsonMaps)
@@ -154,6 +159,9 @@ func decoder() {
 	}
 }
 func main() {
-	decoder()
-	//encoder()
+	if mode=="encoder" {
+		encoder()
+	} else {
+		decoder()
+	}
 }
