@@ -1,1 +1,5 @@
 /transport/spideraf-exchange-geniee.json
+
+#go
+*.toml
+/vender
