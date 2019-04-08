@@ -1,1 +1,6 @@
 /transport/spideraf-exchange-geniee.json
+DS_Store
+
+#Go言語の特有のファイル
+Gopkg.toml
+/vendor
