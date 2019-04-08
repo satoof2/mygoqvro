@@ -1,1 +1,7 @@
 /transport/spideraf-exchange-geniee.json
+
+
+
+#goのやつ
+*.toml
+/vender
